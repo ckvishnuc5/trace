@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { credentialService } from '../services/CredentialService';
-import { ApigeeClient } from '../services/ApigeeClient';
-import { traceService } from '../services/TraceService';
+import { credentialService } from '../services/CredentialService.js';
+import { ApigeeClient } from '../services/ApigeeClient.js';
+import { traceService } from '../services/TraceService.js';
 
 export const apiRouter = Router();
 

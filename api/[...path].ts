@@ -1,8 +1,8 @@
 import express from 'express';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-import { apiRouter } from '../src/server/routes/api';
-import { traceService } from '../src/server/services/TraceService';
+import { apiRouter } from '../src/server/routes/api.js';
+import { traceService } from '../src/server/services/TraceService.js';
 
 const app = express();
 app.set('trust proxy', 1);

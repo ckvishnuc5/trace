@@ -1,6 +1,6 @@
-import { config } from '../config';
-import { ApigeeClient } from './ApigeeClient';
-import { credentialService } from './CredentialService';
+import { config } from '../config.js';
+import { ApigeeClient } from './ApigeeClient.js';
+import { credentialService } from './CredentialService.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface ActiveTrace {

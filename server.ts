@@ -3,8 +3,8 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-import { apiRouter } from './src/server/routes/api';
-import { traceService } from './src/server/services/TraceService';
+import { apiRouter } from './src/server/routes/api.js';
+import { traceService } from './src/server/services/TraceService.js';
 
 async function startServer() {
   const app = express();
