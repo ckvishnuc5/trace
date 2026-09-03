@@ -6,7 +6,9 @@ import { storageService } from '../services/storageService';
 interface ApigeeContextType {
   connection: ConnectionConfig | null;
   connect: (config: ConnectionConfig, remember: boolean) => Promise<void>;
+  changeOrganization: (newOrg: string, newProject?: string, newAccessToken?: string) => Promise<void>;
   disconnect: () => void;
+  recentOrgs: string[];
   proxies: string[];
   loadingProxies: boolean;
   proxiesError: string | null;
@@ -26,6 +28,7 @@ const ApigeeContext = createContext<ApigeeContextType | undefined>(undefined);
 
 export function ApigeeProvider({ children }: { children: React.ReactNode }) {
   const [connection, setConnection] = useState<ConnectionConfig | null>(() => storageService.getConnection());
+  const [recentOrgs, setRecentOrgs] = useState<string[]>(() => storageService.getRecentOrgs());
   const [proxies, setProxies] = useState<string[]>([]);
   const [loadingProxies, setLoadingProxies] = useState(false);
   const [proxiesError, setProxiesError] = useState<string | null>(null);
@@ -74,6 +77,8 @@ export function ApigeeProvider({ children }: { children: React.ReactNode }) {
     // Validate credentials against Apigee X API
     const proxyList = await apigeeClient.testConnection(config.organization, config.accessToken);
     storageService.setConnection(config, remember);
+    storageService.addRecentOrg(config.organization);
+    setRecentOrgs(storageService.getRecentOrgs());
     setConnection(config);
     setProxies(proxyList);
     
@@ -81,6 +86,40 @@ export function ApigeeProvider({ children }: { children: React.ReactNode }) {
       type: 'CONNECT',
       message: `Connected to Apigee organization: ${config.organization}`,
       details: `Project: ${config.project || 'N/A'}, found ${proxyList.length} proxies.`,
+    });
+    setAuditLogs(prev => [entry, ...prev]);
+  };
+
+  const changeOrganization = async (newOrg: string, newProject?: string, newAccessToken?: string) => {
+    const current = connectionRef.current;
+    if (!current) throw new Error('Not currently connected to Apigee');
+
+    const targetOrg = newOrg.trim();
+    if (!targetOrg) throw new Error('Organization name cannot be empty');
+
+    const tokenToUse = newAccessToken && newAccessToken.trim() ? newAccessToken.trim() : current.accessToken;
+    const projectToUse = newProject && newProject.trim() ? newProject.trim() : targetOrg;
+
+    // Test connection & permissions against Apigee X API
+    const proxyList = await apigeeClient.testConnection(targetOrg, tokenToUse);
+
+    const newConfig: ConnectionConfig = {
+      organization: targetOrg,
+      project: projectToUse,
+      accessToken: tokenToUse,
+    };
+
+    storageService.setConnection(newConfig, true);
+    storageService.addRecentOrg(targetOrg);
+    setRecentOrgs(storageService.getRecentOrgs());
+    setConnection(newConfig);
+    setProxies(proxyList);
+    setProxiesError(null);
+
+    const entry = storageService.addAuditLog({
+      type: 'CONNECT',
+      message: `Switched organization from '${current.organization}' to '${targetOrg}'`,
+      details: `Project: ${projectToUse}, found ${proxyList.length} proxies.`,
     });
     setAuditLogs(prev => [entry, ...prev]);
   };
@@ -330,7 +369,9 @@ export function ApigeeProvider({ children }: { children: React.ReactNode }) {
       value={{
         connection,
         connect,
+        changeOrganization,
         disconnect,
+        recentOrgs,
         proxies,
         loadingProxies,
         proxiesError,

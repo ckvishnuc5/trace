@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Activity, LogOut, History, Shield, Radio, ExternalLink } from 'lucide-react';
+import { Activity, LogOut, History, Shield, Radio, ExternalLink, ArrowLeftRight } from 'lucide-react';
 import { ApigeeProvider, useApigee } from './context/ApigeeContext';
 import { ConnectForm } from './components/ConnectForm';
 import { ProxyList } from './components/ProxyList';
 import { TraceControl } from './components/TraceControl';
 import { ActiveTraces } from './components/ActiveTraces';
 import { AuditLogModal } from './components/AuditLogModal';
+import { ChangeOrgModal } from './components/ChangeOrgModal';
 import { ProxyDeployments } from './types';
 
 function MainApp() {
@@ -13,6 +14,7 @@ function MainApp() {
   const [selectedProxy, setSelectedProxy] = useState<string | null>(null);
   const [selectedDeployments, setSelectedDeployments] = useState<ProxyDeployments | null>(null);
   const [showLogs, setShowLogs] = useState(false);
+  const [showChangeOrg, setShowChangeOrg] = useState(false);
 
   const handleRefreshDeployments = async () => {
     if (!selectedProxy) return;
@@ -22,6 +24,11 @@ function MainApp() {
     } catch (err: any) {
       alert(`Failed to refresh deployments: ${err.message}`);
     }
+  };
+
+  const handleOrgSwitched = () => {
+    setSelectedProxy(null);
+    setSelectedDeployments(null);
   };
 
   const handleDisconnect = () => {
@@ -81,7 +88,7 @@ function MainApp() {
 
         {/* Header Right Actions */}
         <div className="flex items-center gap-3 text-xs">
-          {/* Connection Status Pill */}
+          {/* Connection Status Pill & Org Switcher */}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span className="text-[#64748B]">
@@ -90,6 +97,14 @@ function MainApp() {
                 <span className="text-[#94A3B8] ml-1">({connection.project})</span>
               )}
             </span>
+            <button
+              onClick={() => setShowChangeOrg(true)}
+              title="Change / Switch Apigee Organization"
+              className="ml-1 flex items-center gap-1 text-[11px] font-semibold text-[#0284C7] hover:text-[#0369A1] hover:bg-sky-50 px-2 py-0.5 rounded transition-colors border border-sky-200"
+            >
+              <ArrowLeftRight className="w-3 h-3" />
+              <span>Change</span>
+            </button>
           </div>
 
           {/* Activity Log Button */}
@@ -126,6 +141,7 @@ function MainApp() {
               selectedProxy={selectedProxy}
               onSelectingProxy={(name) => setSelectedProxy(name)}
               onSelectDeployments={(data) => setSelectedDeployments(data)}
+              onChangeOrg={() => setShowChangeOrg(true)}
             />
           </div>
 
@@ -158,6 +174,13 @@ function MainApp() {
           </div>
         </div>
       </main>
+
+      {/* Change Organization Modal */}
+      <ChangeOrgModal
+        isOpen={showChangeOrg}
+        onClose={() => setShowChangeOrg(false)}
+        onSwitched={handleOrgSwitched}
+      />
 
       {/* Audit Log Modal */}
       <AuditLogModal isOpen={showLogs} onClose={() => setShowLogs(false)} />

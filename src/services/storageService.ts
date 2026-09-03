@@ -5,6 +5,7 @@ const STORAGE_KEYS = {
   ACTIVE_TRACES: 'apigee_x_active_traces',
   AUDIT_LOGS: 'apigee_x_audit_logs',
   BLOCKED_ENVS: 'apigee_x_blocked_envs',
+  RECENT_ORGS: 'apigee_x_recent_orgs',
 };
 
 const DEFAULT_BLOCKED_ENVS = ['prod', 'production', 'live', 'main'];
@@ -91,5 +92,26 @@ export const storageService = {
 
   setBlockedEnvs(envs: string[]): void {
     localStorage.setItem(STORAGE_KEYS.BLOCKED_ENVS, JSON.stringify(envs));
+  },
+
+  getRecentOrgs(): string[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.RECENT_ORGS);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  addRecentOrg(org: string): void {
+    if (!org || !org.trim()) return;
+    const cleaned = org.trim();
+    const current = this.getRecentOrgs().filter(o => o.toLowerCase() !== cleaned.toLowerCase());
+    const updated = [cleaned, ...current].slice(0, 6);
+    try {
+      localStorage.setItem(STORAGE_KEYS.RECENT_ORGS, JSON.stringify(updated));
+    } catch (e) {
+      console.error('Failed to save recent orgs', e);
+    }
   },
 };

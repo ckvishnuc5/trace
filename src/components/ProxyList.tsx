@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { useApigee } from '../context/ApigeeContext';
-import { Search, RefreshCw, Layers, Radio, AlertCircle } from 'lucide-react';
+import { Search, RefreshCw, Layers, Radio, AlertCircle, ArrowLeftRight } from 'lucide-react';
 import { ProxyDeployments } from '../types';
 
 interface ProxyListProps {
   selectedProxy: string | null;
   onSelectDeployments: (deployments: ProxyDeployments) => void;
   onSelectingProxy: (proxyName: string) => void;
+  onChangeOrg?: () => void;
 }
 
-export function ProxyList({ selectedProxy, onSelectDeployments, onSelectingProxy }: ProxyListProps) {
-  const { proxies, loadingProxies, proxiesError, refreshProxies, getDeployments, activeTraces } = useApigee();
+export function ProxyList({ selectedProxy, onSelectDeployments, onSelectingProxy, onChangeOrg }: ProxyListProps) {
+  const { connection, proxies, loadingProxies, proxiesError, refreshProxies, getDeployments, activeTraces } = useApigee();
   const [search, setSearch] = useState('');
   const [loadingProxy, setLoadingProxy] = useState<string | null>(null);
 
@@ -45,14 +46,25 @@ export function ProxyList({ selectedProxy, onSelectDeployments, onSelectingProxy
               {proxies.length}
             </span>
           </div>
-          <button
-            onClick={refreshProxies}
-            disabled={loadingProxies}
-            title="Refresh Proxy List"
-            className="p-1.5 text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] rounded-md transition-colors disabled:opacity-40"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loadingProxies ? 'animate-spin text-[#0284C7]' : ''}`} />
-          </button>
+          <div className="flex items-center gap-1">
+            {onChangeOrg && (
+              <button
+                onClick={onChangeOrg}
+                title="Switch Apigee Organization"
+                className="p-1.5 text-[#64748B] hover:text-[#0284C7] hover:bg-[#F1F5F9] rounded-md transition-colors"
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button
+              onClick={refreshProxies}
+              disabled={loadingProxies}
+              title="Refresh Proxy List"
+              className="p-1.5 text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] rounded-md transition-colors disabled:opacity-40"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingProxies ? 'animate-spin text-[#0284C7]' : ''}`} />
+            </button>
+          </div>
         </div>
 
         <div className="relative">
@@ -122,8 +134,23 @@ export function ProxyList({ selectedProxy, onSelectDeployments, onSelectingProxy
         })}
 
         {!loadingProxies && !proxiesError && filtered.length === 0 && (
-          <div className="text-center py-10 text-xs text-[#94A3B8]">
-            {search ? `No proxies matching "${search}"` : 'No API proxies found in organization'}
+          <div className="text-center py-10 px-4 text-xs text-[#94A3B8] space-y-2">
+            <div>
+              {search ? (
+                `No proxies matching "${search}"`
+              ) : (
+                <>No API proxies found in <span className="font-mono text-[#475569]">{connection?.organization}</span></>
+              )}
+            </div>
+            {onChangeOrg && !search && (
+              <button
+                onClick={onChangeOrg}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-[#0284C7] bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-lg transition-colors"
+              >
+                <ArrowLeftRight className="w-3 h-3" />
+                <span>Switch Organization</span>
+              </button>
+            )}
           </div>
         )}
       </div>
