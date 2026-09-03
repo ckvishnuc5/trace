@@ -1,101 +1,163 @@
 import React, { useState } from 'react';
-import axios from 'axios';
-import { ConnectResponse } from '../types';
+import { useApigee } from '../context/ApigeeContext';
+import { KeyRound, ShieldCheck, Terminal, Copy, Check, Info } from 'lucide-react';
 
-interface ConnectFormProps {
-  onConnect: (org: string) => void;
-}
-
-export function ConnectForm({ onConnect }: ConnectFormProps) {
+export function ConnectForm() {
+  const { connect } = useApigee();
   const [organization, setOrganization] = useState('');
   const [project, setProject] = useState('');
   const [accessToken, setAccessToken] = useState('');
+  const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyCmd = () => {
+    navigator.clipboard.writeText('gcloud auth print-access-token');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!organization.trim() || !accessToken.trim()) return;
+
     setLoading(true);
     setError(null);
     try {
-      const { data } = await axios.post<ConnectResponse>('/api/session/connect', {
-        organization,
-        project,
-        accessToken,
-      });
-      if (data.connected) {
-        onConnect(data.organization);
-      }
+      await connect(
+        {
+          organization: organization.trim(),
+          project: project.trim() || undefined,
+          accessToken: accessToken.trim(),
+        },
+        remember
+      );
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Failed to connect');
+      setError(err.message || 'Failed to authenticate with Apigee X API');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-white p-6 rounded shadow-sm border border-[#CBD5E1] w-full max-w-md mx-auto mt-10">
-      <h2 className="text-[11px] font-bold text-[#64748B] uppercase tracking-widest mb-4">Connection Configuration</h2>
-      <p className="text-sm text-[#475569] mb-6">
-        Provide a Google Cloud OAuth 2.0 access token with the required Apigee permissions.
-      </p>
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-xs font-medium mb-1.5 text-[#475569]">Organization</label>
-          <input
-            type="text"
-            required
-            value={organization}
-            onChange={(e) => setOrganization(e.target.value)}
-            className="w-full text-sm border border-[#CBD5E1] rounded px-3 py-2 bg-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0284C7] focus:border-transparent"
-            placeholder="my-apigee-org"
-          />
-        </div>
-        
-        <div>
-          <label className="block text-xs font-medium mb-1.5 text-[#475569]">Google Cloud Project (Optional)</label>
-          <input
-            type="text"
-            value={project}
-            onChange={(e) => setProject(e.target.value)}
-            className="w-full text-sm border border-[#CBD5E1] rounded px-3 py-2 bg-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0284C7] focus:border-transparent"
-            placeholder="my-project-id"
-          />
-        </div>
-        
-        <div>
-          <label className="block text-xs font-medium mb-1.5 text-[#475569]">Access Token</label>
-          <input
-            type="password"
-            required
-            value={accessToken}
-            onChange={(e) => setAccessToken(e.target.value)}
-            className="w-full text-sm border border-[#CBD5E1] rounded px-3 py-2 bg-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0284C7] focus:border-transparent font-mono"
-            placeholder="ya29.c..."
-          />
-        </div>
-
-        {error && (
-          <div className="bg-[#FEF2F2] border border-[#FCA5A5] text-[#991B1B] p-3 rounded text-xs font-medium whitespace-pre-wrap break-words">
-            {error}
-            {error.includes('404') && (
-              <div className="mt-2 text-[#7F1D1D] p-2 bg-[#FEE2E2] rounded border border-[#FCA5A5]">
-                <strong>Hint:</strong> A 404 error usually means the Apigee Organization ID is incorrect or hasn't been provisioned. 
-                Double-check your Apigee settings in the Google Cloud Console. Note that your Apigee Organization ID might be different from your Google Cloud Project ID.
-              </div>
-            )}
+    <div className="w-full max-w-lg mx-auto p-4 sm:p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-[#CBD5E1] p-6 sm:p-8">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg bg-[#0284C7]/10 flex items-center justify-center text-[#0284C7]">
+            <KeyRound className="w-5 h-5" />
           </div>
-        )}
+          <div>
+            <h2 className="text-base font-bold text-[#0F172A]">Connect to Apigee X</h2>
+            <p className="text-xs text-[#64748B]">Pure client-side connection via Apigee X Management API</p>
+          </div>
+        </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-2 bg-[#0F172A] text-white text-xs font-semibold rounded hover:bg-[#1E293B] transition-colors disabled:opacity-50"
-        >
-          {loading ? 'Validating...' : 'Validate Connection'}
-        </button>
-      </form>
+        {/* Command Helper */}
+        <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-3 mb-6">
+          <div className="flex items-center justify-between text-xs text-[#475569] mb-1.5 font-medium">
+            <span className="flex items-center gap-1.5">
+              <Terminal className="w-3.5 h-3.5 text-[#0284C7]" />
+              Need an Access Token?
+            </span>
+            <button
+              type="button"
+              onClick={handleCopyCmd}
+              className="text-[#0284C7] hover:text-[#0369A1] flex items-center gap-1 font-mono text-[11px]"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+          <code className="block bg-[#0F172A] text-[#38BDF8] p-2 rounded text-xs font-mono select-all overflow-x-auto">
+            gcloud auth print-access-token
+          </code>
+          <p className="text-[11px] text-[#64748B] mt-2 flex items-center gap-1">
+            <Info className="w-3 h-3 text-[#94A3B8] shrink-0" />
+            Tokens expire in 60 minutes. Tracing requires Apigee Admin or Environment Admin roles.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold mb-1.5 text-[#334155]">
+              Apigee Organization <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={organization}
+              onChange={(e) => setOrganization(e.target.value)}
+              className="w-full text-sm border border-[#CBD5E1] rounded-lg px-3.5 py-2.5 bg-white text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#0284C7] focus:border-transparent font-medium"
+              placeholder="e.g. my-company-apigee-org"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1.5 text-[#334155]">
+              Google Cloud Project ID <span className="text-[#94A3B8] font-normal">(Optional)</span>
+            </label>
+            <input
+              type="text"
+              value={project}
+              onChange={(e) => setProject(e.target.value)}
+              className="w-full text-sm border border-[#CBD5E1] rounded-lg px-3.5 py-2.5 bg-white text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#0284C7] focus:border-transparent font-medium"
+              placeholder="e.g. gcp-project-12345"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1.5 text-[#334155]">
+              OAuth 2.0 Access Token <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              required
+              rows={3}
+              value={accessToken}
+              onChange={(e) => setAccessToken(e.target.value)}
+              className="w-full text-xs border border-[#CBD5E1] rounded-lg px-3.5 py-2.5 bg-white text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#0284C7] focus:border-transparent font-mono"
+              placeholder="ya29.a0Ac..."
+            />
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="remember"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="rounded border-[#CBD5E1] text-[#0284C7] focus:ring-[#0284C7]"
+            />
+            <label htmlFor="remember" className="text-xs text-[#64748B] cursor-pointer">
+              Remember connection in browser storage
+            </label>
+          </div>
+
+          {error && (
+            <div className="bg-[#FEF2F2] border border-[#FCA5A5] text-[#991B1B] p-3.5 rounded-lg text-xs leading-relaxed break-words">
+              <strong>Connection Error:</strong> {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 bg-[#0F172A] text-white text-xs font-bold tracking-wide rounded-lg hover:bg-[#1E293B] active:bg-[#0284C7] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                Connecting & Verifying with Apigee X...
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                Connect & Load Proxies
+              </>
+            )}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

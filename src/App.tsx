@@ -1,110 +1,174 @@
 import React, { useState } from 'react';
+import { Activity, LogOut, History, Shield, Radio, ExternalLink } from 'lucide-react';
+import { ApigeeProvider, useApigee } from './context/ApigeeContext';
 import { ConnectForm } from './components/ConnectForm';
 import { ProxyList } from './components/ProxyList';
 import { TraceControl } from './components/TraceControl';
 import { ActiveTraces } from './components/ActiveTraces';
+import { AuditLogModal } from './components/AuditLogModal';
 import { ProxyDeployments } from './types';
-import { Activity } from 'lucide-react';
-import axios from 'axios';
 
-export default function App() {
-  const [organization, setOrganization] = useState<string | null>(null);
+function MainApp() {
+  const { connection, disconnect, getDeployments, activeTraces, auditLogs } = useApigee();
+  const [selectedProxy, setSelectedProxy] = useState<string | null>(null);
   const [selectedDeployments, setSelectedDeployments] = useState<ProxyDeployments | null>(null);
-
-  React.useEffect(() => {
-    const interceptor = axios.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response && error.response.status === 401) {
-          setOrganization(null);
-          setSelectedDeployments(null);
-        }
-        return Promise.reject(error);
-      }
-    );
-    return () => axios.interceptors.response.eject(interceptor);
-  }, []);
-
-  const handleLogout = async () => {
-    try {
-      await axios.post('/api/session/logout');
-    } catch (err) {}
-    setOrganization(null);
-    setSelectedDeployments(null);
-  };
+  const [showLogs, setShowLogs] = useState(false);
 
   const handleRefreshDeployments = async () => {
-    if (!selectedDeployments) return;
+    if (!selectedProxy) return;
     try {
-      const { data } = await axios.get<ProxyDeployments>(`/api/proxies/${selectedDeployments.proxy}/deployments`);
+      const data = await getDeployments(selectedProxy);
       setSelectedDeployments(data);
-    } catch (err) {
-      alert('Failed to refresh deployments');
+    } catch (err: any) {
+      alert(`Failed to refresh deployments: ${err.message}`);
     }
   };
 
-  if (!organization) {
+  const handleDisconnect = () => {
+    disconnect();
+    setSelectedProxy(null);
+    setSelectedDeployments(null);
+  };
+
+  if (!connection) {
     return (
-      <div className="flex flex-col h-screen bg-[#F1F5F9] text-[#1E293B] font-sans overflow-hidden">
-        <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-          <div className="w-12 h-12 bg-[#0284C7] rounded-lg flex items-center justify-center mx-auto shadow-sm">
-            <Activity className="w-7 h-7 text-white" />
+      <div className="min-h-screen bg-[#F1F5F9] text-[#1E293B] flex flex-col justify-center px-4 py-12">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md text-center mb-8">
+          <div className="w-12 h-12 bg-[#0284C7] rounded-xl flex items-center justify-center mx-auto shadow-md">
+            <Activity className="w-6 h-6 text-white" />
           </div>
-          <h1 className="mt-4 text-2xl font-bold tracking-tight text-[#0F172A]">Apigee X Trace Manager</h1>
-          <p className="mt-2 text-sm text-[#64748B] font-medium tracking-wide uppercase">Non-Production Trace Control</p>
+          <h1 className="mt-4 text-2xl font-bold tracking-tight text-[#0F172A]">
+            Apigee X Trace Manager
+          </h1>
+          <p className="mt-1 text-xs text-[#64748B] font-medium tracking-wide uppercase">
+            Client-Side Non-Production Trace Control
+          </p>
         </div>
-        <div className="mt-8">
-          <ConnectForm onConnect={setOrganization} />
+
+        <ConnectForm />
+
+        <div className="mt-8 text-center text-[11px] text-[#94A3B8]">
+          Pure Static Architecture • Direct Apigee X Management API • Zero Backend Dependencies
         </div>
       </div>
     );
   }
 
+  const activeCount = activeTraces.filter(t => t.status === 'ACTIVE').length;
+
   return (
     <div className="flex flex-col h-screen bg-[#F1F5F9] text-[#1E293B] font-sans overflow-hidden">
-      <header className="bg-white border-b border-[#CBD5E1] px-6 py-3 flex justify-between items-center shadow-sm z-10 shrink-0">
+      {/* Top Application Header */}
+      <header className="bg-white border-b border-[#CBD5E1] px-6 py-3 flex flex-wrap justify-between items-center shadow-xs z-10 shrink-0 gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-[#0284C7] rounded flex items-center justify-center">
+          <div className="w-8 h-8 bg-[#0284C7] rounded-lg flex items-center justify-center shadow-xs">
             <Activity className="w-5 h-5 text-white" />
           </div>
-          <h1 className="text-lg font-bold tracking-tight text-[#0F172A]">Apigee X Trace Manager</h1>
-          <span className="bg-[#FEE2E2] text-[#B91C1C] text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider border border-[#FECACA] ml-2">Non-Production Only</span>
-        </div>
-        <div className="flex items-center gap-4 text-sm">
-          <div className="flex items-center gap-2 text-[#64748B]">
-            <span className="w-2 h-2 rounded-full bg-green-500"></span>
-            <span>Connected: <strong className="text-[#0F172A]">{organization}</strong></span>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm font-bold tracking-tight text-[#0F172A]">
+                Apigee X Trace Manager
+              </h1>
+              <span className="bg-[#FEE2E2] text-[#B91C1C] text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider border border-[#FECACA]">
+                Non-Prod Only
+              </span>
+            </div>
+            <p className="text-[10px] text-[#64748B] font-medium">
+              Static Client-Side App
+            </p>
           </div>
-          <button onClick={handleLogout} className="px-3 py-1.5 border border-[#CBD5E1] rounded text-xs font-medium hover:bg-gray-50 text-[#0F172A] transition-colors">
+        </div>
+
+        {/* Header Right Actions */}
+        <div className="flex items-center gap-3 text-xs">
+          {/* Connection Status Pill */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="text-[#64748B]">
+              Org: <strong className="text-[#0F172A] font-mono">{connection.organization}</strong>
+              {connection.project && connection.project !== connection.organization && (
+                <span className="text-[#94A3B8] ml-1">({connection.project})</span>
+              )}
+            </span>
+          </div>
+
+          {/* Activity Log Button */}
+          <button
+            onClick={() => setShowLogs(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-[#CBD5E1] rounded-lg text-xs font-semibold hover:bg-[#F8FAFC] text-[#334155] transition-colors"
+          >
+            <History className="w-3.5 h-3.5 text-[#0284C7]" />
+            <span>Activity Log</span>
+            {auditLogs.length > 0 && (
+              <span className="bg-blue-100 text-[#0284C7] text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+                {auditLogs.length}
+              </span>
+            )}
+          </button>
+
+          {/* Disconnect Button */}
+          <button
+            onClick={handleDisconnect}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-[#CBD5E1] rounded-lg text-xs font-semibold hover:bg-[#FEF2F2] hover:border-[#FCA5A5] text-[#475569] hover:text-[#B91C1C] transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
             Disconnect
           </button>
         </div>
       </header>
 
+      {/* Main Grid View */}
       <main className="flex-1 overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-12 h-full">
+          {/* Left Sidebar: API Proxies */}
           <div className="lg:col-span-4 xl:col-span-3 border-r border-[#CBD5E1] bg-[#F8FAFC] flex flex-col h-full overflow-hidden">
-            <ProxyList onSelectDeployments={setSelectedDeployments} />
+            <ProxyList
+              selectedProxy={selectedProxy}
+              onSelectingProxy={(name) => setSelectedProxy(name)}
+              onSelectDeployments={(data) => setSelectedDeployments(data)}
+            />
           </div>
-          
-          <div className="lg:col-span-8 xl:col-span-9 bg-white flex flex-col h-full p-6 overflow-y-auto">
-            {selectedDeployments ? (
-              <TraceControl 
-                deploymentsData={selectedDeployments} 
-                onTraceCreated={() => {}} 
-                onRefreshDeployments={handleRefreshDeployments}
-              />
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-[#94A3B8]">
-                <Activity className="w-12 h-12 mb-4 opacity-50" />
-                <p className="text-sm">Select a proxy from the list to view deployments and enable tracing.</p>
-              </div>
-            )}
-            
-            <ActiveTraces />
+
+          {/* Right Panel: Deployment & Trace Control */}
+          <div className="lg:col-span-8 xl:col-span-9 bg-[#F8FAFC] flex flex-col h-full p-6 overflow-y-auto">
+            <div className="max-w-4xl mx-auto w-full space-y-6">
+              {selectedDeployments ? (
+                <TraceControl
+                  deploymentsData={selectedDeployments}
+                  onRefreshDeployments={handleRefreshDeployments}
+                  onSessionStarted={handleRefreshDeployments}
+                />
+              ) : (
+                <div className="bg-white rounded-xl border border-[#CBD5E1] p-10 text-center shadow-xs">
+                  <div className="w-12 h-12 bg-blue-50 text-[#0284C7] rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Activity className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-sm font-bold text-[#0F172A] mb-1">
+                    Select an API Proxy
+                  </h3>
+                  <p className="text-xs text-[#64748B] max-w-sm mx-auto leading-relaxed">
+                    Choose an API proxy from the list on the left to inspect environments, revisions, and start or renew live debug sessions directly on Apigee X.
+                  </p>
+                </div>
+              )}
+
+              {/* Active & Historical Traces */}
+              <ActiveTraces />
+            </div>
           </div>
         </div>
       </main>
+
+      {/* Audit Log Modal */}
+      <AuditLogModal isOpen={showLogs} onClose={() => setShowLogs(false)} />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ApigeeProvider>
+      <MainApp />
+    </ApigeeProvider>
   );
 }

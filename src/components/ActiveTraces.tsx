@@ -1,121 +1,192 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useApigee } from '../context/ApigeeContext';
 import { ActiveTrace } from '../types';
-import { ExternalLink, RefreshCw } from 'lucide-react';
+import { ExternalLink, Radio, Trash2, StopCircle, RotateCcw, AlertTriangle } from 'lucide-react';
 
 export function ActiveTraces() {
-  const [traces, setTraces] = useState<ActiveTrace[]>([]);
+  const { activeTraces, toggleAutoRenew, stopTrace, removeTraceRecord, connection } = useApigee();
   const [now, setNow] = useState(Date.now());
 
+  // Local ticker for smooth second-by-second countdown
   useEffect(() => {
-    loadTraces();
-    const interval = setInterval(() => {
+    const timer = setInterval(() => {
       setNow(Date.now());
-      loadTraces(); // Refresh every 5 seconds from server to get sync states
-    }, 5000);
-    return () => clearInterval(interval);
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
 
-  const loadTraces = async () => {
-    try {
-      const { data } = await axios.get<ActiveTrace[]>('/api/traces/active');
-      setTraces(data);
-    } catch (err) {
-      console.error('Failed to load active traces', err);
+  const getRemainingTime = (trace: ActiveTrace) => {
+    if (trace.status !== 'ACTIVE' && trace.status !== 'RENEWING') {
+      return '00:00';
     }
-  };
-
-  const toggleAutoRenew = async (trace: ActiveTrace) => {
-    try {
-      await axios.post(`/api/traces/${trace.proxy}/${trace.environment}/renewal`, {
-        enabled: !trace.autoRenew
-      });
-      loadTraces();
-    } catch (err) {
-      alert('Failed to toggle auto-renew');
-    }
-  };
-
-  const getRemainingTime = (expiresAt: number) => {
-    const diff = Math.max(0, expiresAt - now);
+    const diff = Math.max(0, trace.expiresAt - now);
     const m = Math.floor(diff / 60000);
     const s = Math.floor((diff % 60000) / 1000);
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  if (traces.length === 0) {
+  const getConsoleLink = (trace: ActiveTrace) => {
+    const project = connection?.project || trace.organization;
+    return `https://console.cloud.google.com/apigee/proxies/${encodeURIComponent(trace.proxy)}/trace?project=${encodeURIComponent(project)}&environment=${encodeURIComponent(trace.environment)}&revision=${encodeURIComponent(trace.revision)}`;
+  };
+
+  if (activeTraces.length === 0) {
     return (
-      <div className="mt-8 border-t border-[#F1F5F9] pt-8">
-        <div className="flex items-center gap-2 mb-6 opacity-50">
-          <div className="w-2 h-2 rounded-full bg-[#94A3B8]"></div>
-          <h2 className="text-sm font-bold text-[#64748B] uppercase">Active Traces</h2>
+      <div className="bg-white rounded-xl shadow-sm border border-[#CBD5E1] p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-2 h-2 rounded-full bg-[#94A3B8]" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-[#64748B]">Active Debug Sessions</h3>
         </div>
-        <div className="text-center py-8 text-[#94A3B8] border border-dashed border-[#CBD5E1] rounded-xl bg-[#F8FAFC] opacity-75">
-          <p className="text-xs font-bold uppercase tracking-widest mb-1">No Active Debug Sessions</p>
-          <p className="text-[10px]">Traces you start will appear here and auto-renew.</p>
+        <div className="text-center py-8 text-[#94A3B8] border border-dashed border-[#E2E8F0] rounded-lg bg-[#F8FAFC]">
+          <p className="text-xs font-semibold uppercase tracking-wider mb-1">No Active Sessions</p>
+          <p className="text-[11px]">Select a proxy on the left and start a debug session to begin live tracing.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mt-8 border-t border-[#F1F5F9] pt-8">
-      <div className="flex items-center gap-2 mb-6">
-        <div className="w-2 h-2 rounded-full bg-[#0284C7] animate-pulse"></div>
-        <h2 className="text-sm font-bold text-[#0F172A] uppercase">Active Traces</h2>
+    <div className="bg-white rounded-xl shadow-sm border border-[#CBD5E1] p-6">
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-2">
+          <Radio className="w-4 h-4 text-[#0284C7] animate-pulse" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-[#0F172A]">
+            Active Sessions ({activeTraces.length})
+          </h3>
+        </div>
+        <span className="text-[11px] text-[#64748B]">Client-side auto-renew worker active</span>
       </div>
-      <div className="space-y-6">
-        {traces.map(trace => (
-          <div key={trace.id} className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-4">
-            <div className="mb-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h4 className="text-lg font-bold text-[#0F172A]">{trace.proxy}</h4>
-                  <p className="text-xs text-[#64748B] font-mono">{trace.environment.toUpperCase()} • Rev {trace.revision} • {trace.sessionId.substring(0, 12)}</p>
-                </div>
-                <div className="text-right">
-                  <p className={`text-2xl font-mono font-bold ${trace.status === 'ACTIVE' ? 'text-[#0F172A]' : 'text-[#64748B]'}`}>
-                    {trace.status === 'ACTIVE' ? getRemainingTime(trace.expiresAt) : '00:00'}
-                  </p>
-                  <p className={`text-[10px] font-bold uppercase ${trace.status === 'ACTIVE' ? 'text-[#059669]' : trace.status === 'FAILED' ? 'text-[#B91C1C]' : 'text-[#64748B]'}`}>
-                    {trace.status}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            {trace.errorMessage && (
-              <div className="mb-4 text-xs text-[#991B1B] bg-[#FEF2F2] border border-[#FCA5A5] p-2 rounded font-medium">
-                {trace.errorMessage}
-              </div>
-            )}
 
-            <div className="flex flex-col gap-2">
-              <a
-                href={`https://console.cloud.google.com/apigee/proxies/${trace.proxy}/trace?project=${trace.organization}&environment=${trace.environment}&revision=${trace.revision}`}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full bg-[#0284C7] text-white py-2.5 rounded-lg text-xs font-bold text-center hover:bg-[#0369A1] shadow-sm flex items-center justify-center gap-1 transition-colors"
-              >
-                Open Apigee Trace Console <ExternalLink className="w-3 h-3" />
-              </a>
-              <div className="flex items-center justify-between p-2 border border-[#E2E8F0] rounded-lg bg-white mt-2">
-                <span className="text-xs font-medium text-[#475569]">Auto-Renewal</span>
-                <button
-                  onClick={() => toggleAutoRenew(trace)}
-                  className="flex items-center gap-2 focus:outline-none"
-                >
-                  <span className={`text-[10px] font-bold uppercase ${trace.autoRenew ? 'text-[#059669]' : 'text-[#64748B]'}`}>
-                    {trace.autoRenew ? 'Enabled' : 'Disabled'}
-                  </span>
-                  <div className={`w-8 h-4 rounded-full relative p-0.5 transition-colors ${trace.autoRenew ? 'bg-[#059669]' : 'bg-[#CBD5E1]'}`}>
-                    <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform ${trace.autoRenew ? 'translate-x-4' : 'translate-x-0'}`}></div>
+      <div className="space-y-4">
+        {activeTraces.map((trace) => {
+          const isExpiringSoon = trace.status === 'ACTIVE' && (trace.expiresAt - now) <= 30000;
+
+          return (
+            <div
+              key={trace.id}
+              className={`rounded-xl border p-4 transition-all ${
+                trace.status === 'ACTIVE'
+                  ? isExpiringSoon
+                    ? 'border-amber-300 bg-amber-50/50'
+                    : 'border-[#CBD5E1] bg-white'
+                  : trace.status === 'RENEWING'
+                  ? 'border-[#0284C7] bg-[#F0F9FF]'
+                  : trace.status === 'FAILED'
+                  ? 'border-rose-300 bg-rose-50/40'
+                  : 'border-[#E2E8F0] bg-[#F8FAFC]'
+              }`}
+            >
+              {/* Header Info */}
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-[#0F172A]">{trace.proxy}</h4>
+                    <span className="text-[10px] font-mono bg-[#E2E8F0] text-[#334155] px-1.5 py-0.5 rounded">
+                      Rev {trace.revision}
+                    </span>
                   </div>
-                </button>
+                  <p className="text-xs text-[#64748B] font-mono mt-0.5">
+                    {trace.environment.toUpperCase()} • Session:{' '}
+                    <span className="text-[#0F172A]">{trace.sessionId.substring(0, 16)}</span>
+                  </p>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <div className="font-mono text-xl font-bold tracking-tight text-[#0F172A]">
+                    {getRemainingTime(trace)}
+                  </div>
+                  <div className="flex items-center justify-end gap-1 mt-0.5">
+                    {trace.status === 'ACTIVE' && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 uppercase">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Active
+                      </span>
+                    )}
+                    {trace.status === 'RENEWING' && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-[#0284C7] uppercase">
+                        <RotateCcw className="w-3 h-3 animate-spin" />
+                        Renewing
+                      </span>
+                    )}
+                    {trace.status === 'EXPIRED' && (
+                      <span className="text-[10px] font-bold text-[#64748B] uppercase">Expired</span>
+                    )}
+                    {trace.status === 'FAILED' && (
+                      <span className="text-[10px] font-bold text-rose-700 uppercase flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        Failed
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Error Message if Failed */}
+              {trace.errorMessage && (
+                <div className="mb-3 p-2 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-lg">
+                  {trace.errorMessage}
+                </div>
+              )}
+
+              {/* Controls */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#E2E8F0]">
+                {/* Auto Renew Toggle */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => toggleAutoRenew(trace.id)}
+                    className="flex items-center gap-2 text-xs font-semibold text-[#475569] focus:outline-none"
+                  >
+                    <div
+                      className={`w-8 h-4 rounded-full relative p-0.5 transition-colors ${
+                        trace.autoRenew ? 'bg-emerald-600' : 'bg-[#CBD5E1]'
+                      }`}
+                    >
+                      <div
+                        className={`w-3 h-3 bg-white rounded-full shadow-xs transition-transform ${
+                          trace.autoRenew ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </div>
+                    <span>Auto-Renew</span>
+                  </button>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-2">
+                  <a
+                    href={getConsoleLink(trace)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1 text-xs font-bold text-[#0284C7] hover:text-[#0369A1] hover:underline px-2 py-1"
+                  >
+                    Open Console <ExternalLink className="w-3 h-3" />
+                  </a>
+
+                  {trace.status === 'ACTIVE' && (
+                    <button
+                      onClick={() => stopTrace(trace.id)}
+                      className="flex items-center gap-1 text-xs font-semibold text-rose-700 hover:bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg transition-colors"
+                      title="Stop trace session on Apigee X"
+                    >
+                      <StopCircle className="w-3 h-3" />
+                      Stop
+                    </button>
+                  )}
+
+                  {(trace.status === 'EXPIRED' || trace.status === 'FAILED') && (
+                    <button
+                      onClick={() => removeTraceRecord(trace.id)}
+                      className="text-xs text-[#64748B] hover:text-rose-600 p-1 rounded transition-colors"
+                      title="Remove record"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

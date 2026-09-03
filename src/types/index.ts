@@ -1,12 +1,7 @@
-export interface ConnectRequest {
+export interface ConnectionConfig {
   organization: string;
   project?: string;
   accessToken: string;
-}
-
-export interface ConnectResponse {
-  connected: boolean;
-  organization: string;
 }
 
 export interface Deployment {
@@ -20,13 +15,6 @@ export interface ProxyDeployments {
   deployments: Deployment[];
 }
 
-export interface TraceRequest {
-  proxy: string;
-  environment: string;
-  revision: string;
-  timeoutSeconds: number;
-}
-
 export interface ActiveTrace {
   id: string;
   sessionId: string;
@@ -38,6 +26,17 @@ export interface ActiveTrace {
   createdAt: number;
   expiresAt: number;
   autoRenew: boolean;
-  status: 'ACTIVE' | 'EXPIRED' | 'FAILED';
+  status: 'ACTIVE' | 'EXPIRED' | 'FAILED' | 'RENEWING';
   errorMessage?: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: number;
+  type: 'CONNECT' | 'TRACE_CREATED' | 'TRACE_RENEWED' | 'TRACE_STOPPED' | 'TRACE_EXPIRED' | 'ERROR';
+  message: string;
+  proxy?: string;
+  environment?: string;
+  revision?: string;
+  details?: string;
 }
