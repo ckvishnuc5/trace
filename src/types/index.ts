@@ -4,6 +4,12 @@ export interface ConnectionConfig {
   accessToken: string;
 }
 
+export interface SavedOrgEntry {
+  organization: string;
+  project?: string;
+  lastUsed: number;
+}
+
 export interface Deployment {
   environment: string;
   revision: string;

@@ -1,4 +1,4 @@
-import { ActiveTrace, AuditLogEntry, ConnectionConfig } from '../types';
+import { ActiveTrace, AuditLogEntry, ConnectionConfig, SavedOrgEntry } from '../types';
 
 const STORAGE_KEYS = {
   CONNECTION: 'apigee_x_connection',
@@ -94,24 +94,65 @@ export const storageService = {
     localStorage.setItem(STORAGE_KEYS.BLOCKED_ENVS, JSON.stringify(envs));
   },
 
-  getRecentOrgs(): string[] {
+  getSavedOrgs(): SavedOrgEntry[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.RECENT_ORGS);
-      return data ? JSON.parse(data) : [];
+      if (!data) return [];
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item: any) => {
+          if (typeof item === 'string') {
+            return { organization: item, lastUsed: Date.now() };
+          }
+          return item as SavedOrgEntry;
+        });
+      }
+      return [];
     } catch {
       return [];
     }
   },
 
-  addRecentOrg(org: string): void {
-    if (!org || !org.trim()) return;
+  getRecentOrgs(): string[] {
+    return this.getSavedOrgs().map(o => o.organization);
+  },
+
+  addSavedOrg(org: string, project?: string): SavedOrgEntry[] {
+    if (!org || !org.trim()) return this.getSavedOrgs();
     const cleaned = org.trim();
-    const current = this.getRecentOrgs().filter(o => o.toLowerCase() !== cleaned.toLowerCase());
-    const updated = [cleaned, ...current].slice(0, 6);
+    const cleanedProject = project && project.trim() ? project.trim() : undefined;
+    const current = this.getSavedOrgs().filter(
+      o => o.organization.toLowerCase() !== cleaned.toLowerCase()
+    );
+    const newEntry: SavedOrgEntry = {
+      organization: cleaned,
+      project: cleanedProject,
+      lastUsed: Date.now(),
+    };
+    const updated = [newEntry, ...current].slice(0, 25);
     try {
       localStorage.setItem(STORAGE_KEYS.RECENT_ORGS, JSON.stringify(updated));
     } catch (e) {
       console.error('Failed to save recent orgs', e);
     }
+    return updated;
+  },
+
+  removeSavedOrg(org: string): SavedOrgEntry[] {
+    if (!org) return this.getSavedOrgs();
+    const cleaned = org.trim().toLowerCase();
+    const current = this.getSavedOrgs().filter(
+      o => o.organization.toLowerCase() !== cleaned
+    );
+    try {
+      localStorage.setItem(STORAGE_KEYS.RECENT_ORGS, JSON.stringify(current));
+    } catch (e) {
+      console.error('Failed to remove saved org', e);
+    }
+    return current;
+  },
+
+  addRecentOrg(org: string, project?: string): void {
+    this.addSavedOrg(org, project);
   },
 };

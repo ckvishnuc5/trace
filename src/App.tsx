@@ -7,6 +7,7 @@ import { TraceControl } from './components/TraceControl';
 import { ActiveTraces } from './components/ActiveTraces';
 import { AuditLogModal } from './components/AuditLogModal';
 import { ChangeOrgModal } from './components/ChangeOrgModal';
+import { OrgDropdownSwitcher } from './components/OrgDropdownSwitcher';
 import { ProxyDeployments } from './types';
 
 function MainApp() {
@@ -88,24 +89,11 @@ function MainApp() {
 
         {/* Header Right Actions */}
         <div className="flex items-center gap-3 text-xs">
-          {/* Connection Status Pill & Org Switcher */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="text-[#64748B]">
-              Org: <strong className="text-[#0F172A] font-mono">{connection.organization}</strong>
-              {connection.project && connection.project !== connection.organization && (
-                <span className="text-[#94A3B8] ml-1">({connection.project})</span>
-              )}
-            </span>
-            <button
-              onClick={() => setShowChangeOrg(true)}
-              title="Change / Switch Apigee Organization"
-              className="ml-1 flex items-center gap-1 text-[11px] font-semibold text-[#0284C7] hover:text-[#0369A1] hover:bg-sky-50 px-2 py-0.5 rounded transition-colors border border-sky-200"
-            >
-              <ArrowLeftRight className="w-3 h-3" />
-              <span>Change</span>
-            </button>
-          </div>
+          {/* Interactive Organization Dropdown Switcher */}
+          <OrgDropdownSwitcher
+            onOpenNewOrgModal={() => setShowChangeOrg(true)}
+            onSwitched={handleOrgSwitched}
+          />
 
           {/* Activity Log Button */}
           <button

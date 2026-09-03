@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useApigee } from '../context/ApigeeContext';
-import { KeyRound, ShieldCheck, Terminal, Copy, Check, Info } from 'lucide-react';
+import { KeyRound, ShieldCheck, Terminal, Copy, Check, Info, ChevronDown, Building2 } from 'lucide-react';
 
 export function ConnectForm() {
-  const { connect } = useApigee();
+  const { connect, savedOrgs } = useApigee();
   const [organization, setOrganization] = useState('');
   const [project, setProject] = useState('');
   const [accessToken, setAccessToken] = useState('');
@@ -79,9 +79,41 @@ export function ConnectForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {savedOrgs.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold mb-1 text-[#334155]">
+                Saved Organizations <span className="text-[#64748B] font-normal">(Select to fill)</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={savedOrgs.some(o => o.organization.toLowerCase() === organization.toLowerCase()) ? organization : ''}
+                  onChange={(e) => {
+                    const sel = e.target.value;
+                    if (!sel) return;
+                    const found = savedOrgs.find(o => o.organization.toLowerCase() === sel.toLowerCase());
+                    setOrganization(found ? found.organization : sel);
+                    if (found?.project) setProject(found.project);
+                  }}
+                  className="w-full text-xs border border-[#CBD5E1] rounded-lg pl-3 pr-8 py-2 bg-[#F8FAFC] text-[#0F172A] font-mono focus:outline-none focus:ring-2 focus:ring-[#0284C7] focus:border-transparent appearance-none cursor-pointer"
+                >
+                  <option value="">-- Select a previously used organization --</option>
+                  {savedOrgs.map((item) => (
+                    <option key={item.organization} value={item.organization}>
+                      {item.organization} {item.project && item.project !== item.organization ? `(${item.project})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-[#64748B]">
+                  <ChevronDown className="w-4 h-4" />
+                </span>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-semibold mb-1.5 text-[#334155]">
-              Apigee Organization <span className="text-red-500">*</span>
+              {savedOrgs.length > 0 ? 'Or Enter Apigee Organization' : 'Apigee Organization'}{' '}
+              <span className="text-red-500">*</span>
             </label>
             <input
               type="text"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApigee } from '../context/ApigeeContext';
-import { X, ArrowLeftRight, Building2, Key, CheckCircle2, AlertCircle, Clock, Sparkles } from 'lucide-react';
+import { X, ArrowLeftRight, Building2, Key, CheckCircle2, AlertCircle, ChevronDown, Sparkles } from 'lucide-react';
 
 interface ChangeOrgModalProps {
   isOpen: boolean;
@@ -9,7 +9,7 @@ interface ChangeOrgModalProps {
 }
 
 export function ChangeOrgModal({ isOpen, onClose, onSwitched }: ChangeOrgModalProps) {
-  const { connection, changeOrganization, recentOrgs } = useApigee();
+  const { connection, changeOrganization, savedOrgs } = useApigee();
   const [newOrg, setNewOrg] = useState('');
   const [newProject, setNewProject] = useState('');
   const [useCustomToken, setUseCustomToken] = useState(false);
@@ -42,15 +42,15 @@ export function ChangeOrgModal({ isOpen, onClose, onSwitched }: ChangeOrgModalPr
   if (!isOpen || !connection) return null;
 
   const currentOrg = connection.organization;
-  const otherRecentOrgs = recentOrgs.filter(
-    (org) => org.toLowerCase() !== currentOrg.toLowerCase()
+  const selectableSavedOrgs = savedOrgs.filter(
+    (item) => item.organization.toLowerCase() !== currentOrg.toLowerCase()
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const targetOrg = newOrg.trim();
     if (!targetOrg) {
-      setError('Please enter a target Apigee organization ID.');
+      setError('Please enter or select a target Apigee organization ID.');
       return;
     }
 
@@ -76,8 +76,17 @@ export function ChangeOrgModal({ isOpen, onClose, onSwitched }: ChangeOrgModalPr
     }
   };
 
-  const handleSelectRecent = (orgName: string) => {
-    setNewOrg(orgName);
+  const handleDropdownSelect = (selectedOrgName: string) => {
+    if (!selectedOrgName) {
+      setNewOrg('');
+      setNewProject('');
+      return;
+    }
+    const found = savedOrgs.find(
+      (o) => o.organization.toLowerCase() === selectedOrgName.toLowerCase()
+    );
+    setNewOrg(found ? found.organization : selectedOrgName);
+    setNewProject(found?.project || '');
     setError(null);
   };
 
@@ -97,10 +106,10 @@ export function ChangeOrgModal({ isOpen, onClose, onSwitched }: ChangeOrgModalPr
             </div>
             <div>
               <h3 id="change-org-title" className="text-sm font-bold text-[#0F172A]">
-                Change Apigee Organization
+                Switch or Add Organization
               </h3>
               <p className="text-[11px] text-[#64748B]">
-                Switch active organization without restarting your session
+                Select from captured organizations or add a new one to your dropdown
               </p>
             </div>
           </div>
@@ -119,10 +128,10 @@ export function ChangeOrgModal({ isOpen, onClose, onSwitched }: ChangeOrgModalPr
           <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-3 text-xs flex items-center justify-between">
             <div className="space-y-0.5">
               <div className="text-[10px] uppercase font-bold tracking-wider text-[#64748B]">
-                Currently Connected To
+                Active Organization
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="font-mono font-bold text-[#0F172A] text-xs">
                   {currentOrg}
                 </span>
@@ -135,7 +144,7 @@ export function ChangeOrgModal({ isOpen, onClose, onSwitched }: ChangeOrgModalPr
             </div>
             <div className="text-right">
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
-                <CheckCircle2 className="w-3 h-3" /> Active
+                <CheckCircle2 className="w-3 h-3" /> Connected
               </span>
             </div>
           </div>
@@ -150,11 +159,44 @@ export function ChangeOrgModal({ isOpen, onClose, onSwitched }: ChangeOrgModalPr
             </div>
           )}
 
+          {/* Quick Dropdown: Captured Organizations */}
+          {selectableSavedOrgs.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold text-[#334155] mb-1">
+                Select from Captured Organizations
+              </label>
+              <div className="relative">
+                <select
+                  value={selectableSavedOrgs.some(o => o.organization.toLowerCase() === newOrg.toLowerCase()) ? newOrg : ''}
+                  onChange={(e) => handleDropdownSelect(e.target.value)}
+                  disabled={loading}
+                  className="w-full pl-3 pr-8 py-2 border border-[#CBD5E1] rounded-lg text-xs bg-[#F8FAFC] text-[#0F172A] font-mono focus:ring-2 focus:ring-[#0284C7] focus:border-transparent outline-none appearance-none cursor-pointer"
+                >
+                  <option value="">-- Choose a captured organization --</option>
+                  {selectableSavedOrgs.map((item) => (
+                    <option key={item.organization} value={item.organization}>
+                      {item.organization} {item.project && item.project !== item.organization ? `(Project: ${item.project})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-[#64748B]">
+                  <ChevronDown className="w-4 h-4" />
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Target Organization Input */}
           <div>
-            <label className="block text-xs font-semibold text-[#334155] mb-1">
-              New Apigee Organization ID <span className="text-rose-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-semibold text-[#334155]">
+                {selectableSavedOrgs.length > 0 ? 'Or Enter New Organization ID' : 'New Apigee Organization ID'}{' '}
+                <span className="text-rose-500">*</span>
+              </label>
+              <span className="text-[10px] text-[#0284C7] font-medium flex items-center gap-1">
+                <Sparkles className="w-3 h-3" /> Auto-saved to dropdown
+              </span>
+            </div>
             <div className="relative">
               <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-[#94A3B8]">
                 <Building2 className="w-4 h-4" />
@@ -165,42 +207,15 @@ export function ChangeOrgModal({ isOpen, onClose, onSwitched }: ChangeOrgModalPr
                 value={newOrg}
                 onChange={(e) => setNewOrg(e.target.value)}
                 placeholder="e.g. apigee-prod-org, my-company-stage"
-                autoFocus
+                autoFocus={selectableSavedOrgs.length === 0}
                 disabled={loading}
-                className="w-full pl-9 pr-3 py-2 border border-[#CBD5E1] rounded-lg text-xs focus:ring-2 focus:ring-[#0284C7] focus:border-transparent outline-none bg-white text-[#0F172A] disabled:bg-[#F1F5F9]"
+                className="w-full pl-9 pr-3 py-2 border border-[#CBD5E1] rounded-lg text-xs font-mono focus:ring-2 focus:ring-[#0284C7] focus:border-transparent outline-none bg-white text-[#0F172A] disabled:bg-[#F1F5F9]"
               />
             </div>
             <p className="mt-1 text-[10px] text-[#64748B]">
-              Apigee X organizations are uniquely named, typically matching your Google Cloud Project ID.
+              Any organization entered here is permanently captured so you can switch back with a single click.
             </p>
           </div>
-
-          {/* Quick-Pick Recent Organizations */}
-          {otherRecentOrgs.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#475569] mb-1.5">
-                <Clock className="w-3.5 h-3.5 text-[#0284C7]" />
-                <span>Recently Used Organizations:</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {otherRecentOrgs.map((org) => (
-                  <button
-                    key={org}
-                    type="button"
-                    onClick={() => handleSelectRecent(org)}
-                    disabled={loading}
-                    className={`px-2.5 py-1 rounded-md text-xs font-mono font-medium border transition-colors ${
-                      newOrg === org
-                        ? 'bg-sky-50 border-[#0284C7] text-[#0284C7]'
-                        : 'bg-[#F8FAFC] border-[#CBD5E1] text-[#334155] hover:bg-white hover:border-[#94A3B8]'
-                    }`}
-                  >
-                    {org}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Optional GCP Project ID */}
           <div>
@@ -213,7 +228,7 @@ export function ChangeOrgModal({ isOpen, onClose, onSwitched }: ChangeOrgModalPr
               onChange={(e) => setNewProject(e.target.value)}
               placeholder="Leave blank to use organization name"
               disabled={loading}
-              className="w-full px-3 py-2 border border-[#CBD5E1] rounded-lg text-xs focus:ring-2 focus:ring-[#0284C7] focus:border-transparent outline-none bg-white text-[#0F172A] disabled:bg-[#F1F5F9]"
+              className="w-full px-3 py-2 border border-[#CBD5E1] rounded-lg text-xs font-mono focus:ring-2 focus:ring-[#0284C7] focus:border-transparent outline-none bg-white text-[#0F172A] disabled:bg-[#F1F5F9]"
             />
           </div>
 
@@ -234,7 +249,7 @@ export function ChangeOrgModal({ isOpen, onClose, onSwitched }: ChangeOrgModalPr
                   className="text-[#0284C7] focus:ring-[#0284C7]"
                 />
                 <span className="text-xs text-[#334155]">
-                  Keep current OAuth access token{' '}
+                  Reuse current OAuth token{' '}
                   <span className="text-[11px] font-mono text-[#64748B]">
                     ({connection.accessToken.substring(0, 8)}...{connection.accessToken.slice(-4)})
                   </span>
@@ -251,7 +266,7 @@ export function ChangeOrgModal({ isOpen, onClose, onSwitched }: ChangeOrgModalPr
                   className="text-[#0284C7] focus:ring-[#0284C7]"
                 />
                 <span className="text-xs text-[#334155]">
-                  Provide a new access token (if target org requires a different account)
+                  Provide a new access token (if target org is under another Google account)
                 </span>
               </label>
             </div>
@@ -273,7 +288,7 @@ export function ChangeOrgModal({ isOpen, onClose, onSwitched }: ChangeOrgModalPr
                   />
                 </div>
                 <p className="text-[10px] text-[#64748B]">
-                  Generate a fresh token via{' '}
+                  Generate token via{' '}
                   <code className="bg-[#E2E8F0] px-1 py-0.5 rounded font-mono text-[#0F172A]">
                     gcloud auth print-access-token
                   </code>
@@ -295,17 +310,17 @@ export function ChangeOrgModal({ isOpen, onClose, onSwitched }: ChangeOrgModalPr
             <button
               type="submit"
               disabled={loading || !newOrg.trim()}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#0284C7] hover:bg-[#0369A1] text-white text-xs font-semibold rounded-lg shadow-xs transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-4 py-2 bg-[#0284C7] hover:bg-[#0369A1] text-white text-xs font-semibold rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
                 <>
                   <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Connecting & Verifying...</span>
+                  <span>Verifying & Switching...</span>
                 </>
               ) : (
                 <>
                   <ArrowLeftRight className="w-3.5 h-3.5" />
-                  <span>Switch Organization</span>
+                  <span>Switch & Save to Dropdown</span>
                 </>
               )}
             </button>
@@ -315,3 +330,4 @@ export function ChangeOrgModal({ isOpen, onClose, onSwitched }: ChangeOrgModalPr
     </div>
   );
 }
+

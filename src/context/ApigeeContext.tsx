@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { ActiveTrace, AuditLogEntry, ConnectionConfig, Deployment, ProxyDeployments } from '../types';
+import { ActiveTrace, AuditLogEntry, ConnectionConfig, Deployment, ProxyDeployments, SavedOrgEntry } from '../types';
 import { apigeeClient } from '../services/apigeeClient';
 import { storageService } from '../services/storageService';
 
@@ -8,7 +8,10 @@ interface ApigeeContextType {
   connect: (config: ConnectionConfig, remember: boolean) => Promise<void>;
   changeOrganization: (newOrg: string, newProject?: string, newAccessToken?: string) => Promise<void>;
   disconnect: () => void;
+  savedOrgs: SavedOrgEntry[];
   recentOrgs: string[];
+  removeSavedOrg: (org: string) => void;
+  switchingOrg: boolean;
   proxies: string[];
   loadingProxies: boolean;
   proxiesError: string | null;
@@ -28,7 +31,9 @@ const ApigeeContext = createContext<ApigeeContextType | undefined>(undefined);
 
 export function ApigeeProvider({ children }: { children: React.ReactNode }) {
   const [connection, setConnection] = useState<ConnectionConfig | null>(() => storageService.getConnection());
+  const [savedOrgs, setSavedOrgs] = useState<SavedOrgEntry[]>(() => storageService.getSavedOrgs());
   const [recentOrgs, setRecentOrgs] = useState<string[]>(() => storageService.getRecentOrgs());
+  const [switchingOrg, setSwitchingOrg] = useState(false);
   const [proxies, setProxies] = useState<string[]>([]);
   const [loadingProxies, setLoadingProxies] = useState(false);
   const [proxiesError, setProxiesError] = useState<string | null>(null);
@@ -68,6 +73,9 @@ export function ApigeeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (connection) {
       refreshProxies();
+      const updated = storageService.addSavedOrg(connection.organization, connection.project);
+      setSavedOrgs(updated);
+      setRecentOrgs(updated.map(o => o.organization));
     } else {
       setProxies([]);
     }
@@ -77,8 +85,9 @@ export function ApigeeProvider({ children }: { children: React.ReactNode }) {
     // Validate credentials against Apigee X API
     const proxyList = await apigeeClient.testConnection(config.organization, config.accessToken);
     storageService.setConnection(config, remember);
-    storageService.addRecentOrg(config.organization);
-    setRecentOrgs(storageService.getRecentOrgs());
+    const updatedSaved = storageService.addSavedOrg(config.organization, config.project);
+    setSavedOrgs(updatedSaved);
+    setRecentOrgs(updatedSaved.map(o => o.organization));
     setConnection(config);
     setProxies(proxyList);
     
@@ -100,28 +109,40 @@ export function ApigeeProvider({ children }: { children: React.ReactNode }) {
     const tokenToUse = newAccessToken && newAccessToken.trim() ? newAccessToken.trim() : current.accessToken;
     const projectToUse = newProject && newProject.trim() ? newProject.trim() : targetOrg;
 
-    // Test connection & permissions against Apigee X API
-    const proxyList = await apigeeClient.testConnection(targetOrg, tokenToUse);
+    setSwitchingOrg(true);
+    try {
+      // Test connection & permissions against Apigee X API
+      const proxyList = await apigeeClient.testConnection(targetOrg, tokenToUse);
 
-    const newConfig: ConnectionConfig = {
-      organization: targetOrg,
-      project: projectToUse,
-      accessToken: tokenToUse,
-    };
+      const newConfig: ConnectionConfig = {
+        organization: targetOrg,
+        project: projectToUse,
+        accessToken: tokenToUse,
+      };
 
-    storageService.setConnection(newConfig, true);
-    storageService.addRecentOrg(targetOrg);
-    setRecentOrgs(storageService.getRecentOrgs());
-    setConnection(newConfig);
-    setProxies(proxyList);
-    setProxiesError(null);
+      storageService.setConnection(newConfig, true);
+      const updatedSaved = storageService.addSavedOrg(targetOrg, projectToUse);
+      setSavedOrgs(updatedSaved);
+      setRecentOrgs(updatedSaved.map(o => o.organization));
+      setConnection(newConfig);
+      setProxies(proxyList);
+      setProxiesError(null);
 
-    const entry = storageService.addAuditLog({
-      type: 'CONNECT',
-      message: `Switched organization from '${current.organization}' to '${targetOrg}'`,
-      details: `Project: ${projectToUse}, found ${proxyList.length} proxies.`,
-    });
-    setAuditLogs(prev => [entry, ...prev]);
+      const entry = storageService.addAuditLog({
+        type: 'CONNECT',
+        message: `Switched organization from '${current.organization}' to '${targetOrg}'`,
+        details: `Project: ${projectToUse}, found ${proxyList.length} proxies.`,
+      });
+      setAuditLogs(prev => [entry, ...prev]);
+    } finally {
+      setSwitchingOrg(false);
+    }
+  };
+
+  const removeSavedOrg = (org: string) => {
+    const updated = storageService.removeSavedOrg(org);
+    setSavedOrgs(updated);
+    setRecentOrgs(updated.map(o => o.organization));
   };
 
   const disconnect = () => {
@@ -371,7 +392,10 @@ export function ApigeeProvider({ children }: { children: React.ReactNode }) {
         connect,
         changeOrganization,
         disconnect,
+        savedOrgs,
         recentOrgs,
+        removeSavedOrg,
+        switchingOrg,
         proxies,
         loadingProxies,
         proxiesError,
