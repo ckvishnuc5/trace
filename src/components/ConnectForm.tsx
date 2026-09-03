@@ -77,7 +77,7 @@ export function ConnectForm({ onConnect }: ConnectFormProps) {
         </div>
 
         {error && (
-          <div className="bg-[#FEF2F2] border border-[#FCA5A5] text-[#991B1B] p-3 rounded text-xs font-medium">
+          <div className="bg-[#FEF2F2] border border-[#FCA5A5] text-[#991B1B] p-3 rounded text-xs font-medium whitespace-pre-wrap break-words">
             {error}
           </div>
         )}

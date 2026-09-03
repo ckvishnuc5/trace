@@ -82,7 +82,12 @@ export class ApigeeClient {
   private handleError(error: unknown) {
     if (axios.isAxiosError(error)) {
       const status = error.response?.status || 500;
-      const message = error.response?.data?.error?.message || error.message;
+      let message = error.response?.data?.error?.message || error.message;
+      if (status === 404) {
+        message = `Apigee Resource Not Found (404). Please verify your Organization, Environment, and Proxy names. Details: ${message}`;
+      } else if (status === 401 || status === 403) {
+        message = `Authentication Failed (${status}). Please check your GCP Access Token and permissions. Details: ${message}`;
+      }
       throw { status, message, isApigeeError: true, raw: error.response?.data };
     }
     throw error;
