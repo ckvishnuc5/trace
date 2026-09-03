@@ -8,6 +8,7 @@ import { traceService } from './src/server/services/TraceService';
 
 async function startServer() {
   const app = express();
+  app.set('trust proxy', 1); // Trust first proxy (required for secure cookies behind reverse proxy)
   const PORT = 3000;
 
   app.use(express.json());

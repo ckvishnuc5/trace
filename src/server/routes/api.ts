@@ -21,17 +21,26 @@ apiRouter.use((req, res, next) => {
   next();
 });
 
-apiRouter.post('/session/connect', (req, res) => {
+apiRouter.post('/session/connect', async (req, res) => {
   const { organization, project, accessToken } = req.body;
   if (!organization || !accessToken) {
     return res.status(400).json({ error: 'Organization and accessToken are required.' });
   }
 
+  try {
+    // Validate connection by attempting to list proxies
+    const client = new ApigeeClient(organization, accessToken);
+    await client.listProxies();
+  } catch (err: any) {
+    const status = err.status || 401;
+    return res.status(status).json({ error: err.message || 'Invalid credentials or organization not found', details: err.raw });
+  }
+
   const sessionId = credentialService.createSession(organization, project, accessToken);
   res.cookie('sessionId', sessionId, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: true,
+    sameSite: 'none',
     path: '/'
   });
 

@@ -11,6 +11,20 @@ export default function App() {
   const [organization, setOrganization] = useState<string | null>(null);
   const [selectedDeployments, setSelectedDeployments] = useState<ProxyDeployments | null>(null);
 
+  React.useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response && error.response.status === 401) {
+          setOrganization(null);
+          setSelectedDeployments(null);
+        }
+        return Promise.reject(error);
+      }
+    );
+    return () => axios.interceptors.response.eject(interceptor);
+  }, []);
+
   const handleLogout = async () => {
     try {
       await axios.post('/api/session/logout');
