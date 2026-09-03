@@ -79,6 +79,12 @@ export function ConnectForm({ onConnect }: ConnectFormProps) {
         {error && (
           <div className="bg-[#FEF2F2] border border-[#FCA5A5] text-[#991B1B] p-3 rounded text-xs font-medium whitespace-pre-wrap break-words">
             {error}
+            {error.includes('404') && (
+              <div className="mt-2 text-[#7F1D1D] p-2 bg-[#FEE2E2] rounded border border-[#FCA5A5]">
+                <strong>Hint:</strong> A 404 error usually means the Apigee Organization ID is incorrect or hasn't been provisioned. 
+                Double-check your Apigee settings in the Google Cloud Console. Note that your Apigee Organization ID might be different from your Google Cloud Project ID.
+              </div>
+            )}
           </div>
         )}
 

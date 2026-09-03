@@ -64,6 +64,11 @@ export function ProxyList({ onSelectDeployments }: ProxyListProps) {
         {error && !loading && (
           <div className="bg-[#FEF2F2] border border-[#FCA5A5] text-[#991B1B] p-3 rounded text-xs font-medium whitespace-pre-wrap break-words">
             {error}
+            {error.includes('404') && (
+              <div className="mt-2 text-[#7F1D1D] font-bold">
+                Hint: Make sure the Organization ID is correct. Try disconnecting and reconnecting.
+              </div>
+            )}
           </div>
         )}
 

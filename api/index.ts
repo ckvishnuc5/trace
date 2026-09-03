@@ -17,7 +17,7 @@ app.use(helmet({
 // Note: Background workers are not ideal in Serverless Functions because 
 // the function sleeps between requests, but we start it here so it can 
 // attempt to run during the request lifecycle.
-traceService.startWorker();
+
 
 app.use('/api', apiRouter);
 
