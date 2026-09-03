@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - APIGEE_BASE_URL=https://apigee.googleapis.com/v1
+      - BLOCKED_ENVIRONMENTS=prod,production,prd,production-us,production-eu
+      - MAX_TRACE_TIMEOUT_SECONDS=600
+      - DEFAULT_TRACE_TIMEOUT_SECONDS=300
+      - TRACE_CONFLICT_POLICY=warn
+      - SESSION_TTL_MINUTES=30

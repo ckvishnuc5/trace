@@ -1,0 +1,6 @@
+{
+  "name": "Apigee X Trace Manager",
+  "description": "Production-quality internal web application for managing Apigee X debug/trace sessions in non-production environments.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
