@@ -41,9 +41,6 @@ export function ProxyList({ onSelectDeployments }: ProxyListProps) {
 
   const filteredProxies = proxies.filter(p => p.toLowerCase().includes(search.toLowerCase()));
 
-  if (loading) return <div className="text-[#64748B] p-4 text-sm">Loading proxies...</div>;
-  if (error) return <div className="text-[#B91C1C] p-4 text-sm">{error}</div>;
-
   return (
     <div className="flex flex-col h-full bg-[#F8FAFC]">
       <div className="p-4 border-b border-[#CBD5E1] bg-white shrink-0">
@@ -56,12 +53,21 @@ export function ProxyList({ onSelectDeployments }: ProxyListProps) {
             placeholder="Search API Proxies..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-[#CBD5E1] rounded-md text-sm focus:ring-2 focus:ring-[#0284C7] focus:border-transparent outline-none bg-white text-[#1E293B]"
+            disabled={loading || !!error}
+            className="w-full pl-10 pr-4 py-2 border border-[#CBD5E1] rounded-md text-sm focus:ring-2 focus:ring-[#0284C7] focus:border-transparent outline-none bg-white text-[#1E293B] disabled:opacity-50"
           />
         </div>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {filteredProxies.map(proxy => {
+        {loading && <div className="text-center text-sm text-[#64748B] mt-4">Loading proxies...</div>}
+        
+        {error && !loading && (
+          <div className="bg-[#FEF2F2] border border-[#FCA5A5] text-[#991B1B] p-3 rounded text-xs font-medium whitespace-pre-wrap break-words">
+            {error}
+          </div>
+        )}
+
+        {!loading && !error && filteredProxies.map(proxy => {
           const isSelected = selectedProxy === proxy;
           return (
             <button
@@ -82,7 +88,7 @@ export function ProxyList({ onSelectDeployments }: ProxyListProps) {
             </button>
           );
         })}
-        {filteredProxies.length === 0 && (
+        {!loading && !error && filteredProxies.length === 0 && (
           <div className="p-4 text-center text-sm text-[#64748B]">No proxies found.</div>
         )}
       </div>

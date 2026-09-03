@@ -43,10 +43,23 @@ export function ActiveTraces() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  if (traces.length === 0) return null;
+  if (traces.length === 0) {
+    return (
+      <div className="mt-8 border-t border-[#F1F5F9] pt-8">
+        <div className="flex items-center gap-2 mb-6 opacity-50">
+          <div className="w-2 h-2 rounded-full bg-[#94A3B8]"></div>
+          <h2 className="text-sm font-bold text-[#64748B] uppercase">Active Traces</h2>
+        </div>
+        <div className="text-center py-8 text-[#94A3B8] border border-dashed border-[#CBD5E1] rounded-xl bg-[#F8FAFC] opacity-75">
+          <p className="text-xs font-bold uppercase tracking-widest mb-1">No Active Debug Sessions</p>
+          <p className="text-[10px]">Traces you start will appear here and auto-renew.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="mt-2">
+    <div className="mt-8 border-t border-[#F1F5F9] pt-8">
       <div className="flex items-center gap-2 mb-6">
         <div className="w-2 h-2 rounded-full bg-[#0284C7] animate-pulse"></div>
         <h2 className="text-sm font-bold text-[#0F172A] uppercase">Active Traces</h2>
