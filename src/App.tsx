@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Activity, LogOut, History, Shield, Radio, ExternalLink, ArrowLeftRight } from 'lucide-react';
+import { Activity, LogOut, History, Shield, Radio, ExternalLink, ArrowLeftRight, Heart } from 'lucide-react';
 import { ApigeeProvider, useApigee } from './context/ApigeeContext';
 import { ConnectForm } from './components/ConnectForm';
 import { ProxyList } from './components/ProxyList';
@@ -55,8 +55,12 @@ function MainApp() {
 
         <ConnectForm />
 
-        <div className="mt-8 text-center text-[11px] text-[#94A3B8]">
-          Pure Static Architecture • Direct Apigee X Management API • Zero Backend Dependencies
+        <div id="connect-footer-note" className="mt-8 text-center text-[11px] text-[#94A3B8] space-y-2">
+          <div>Pure Static Architecture • Direct Apigee X Management API • Zero Backend Dependencies</div>
+          <div id="note-author-connect" className="text-xs text-[#64748B] font-medium flex items-center justify-center gap-1.5 pt-1">
+            <span>designed and build by Vichu</span>
+            <span role="img" aria-label="love" className="text-rose-500 text-sm inline-block">❤️</span>
+          </div>
         </div>
       </div>
     );
@@ -162,6 +166,18 @@ function MainApp() {
           </div>
         </div>
       </main>
+
+      {/* Bottom Footer Note */}
+      <footer id="app-footer-note" className="bg-white border-t border-[#CBD5E1] px-6 py-2.5 shrink-0 flex items-center justify-between text-xs text-[#64748B]">
+        <div className="flex items-center gap-2 text-[11px] text-[#94A3B8]">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          <span>Apigee X Client-Side Session Control</span>
+        </div>
+        <div id="note-author-app" className="text-xs font-medium text-[#475569] flex items-center gap-1.5">
+          <span>designed and build by Vichu</span>
+          <span role="img" aria-label="love" className="text-rose-500 text-sm inline-block">❤️</span>
+        </div>
+      </footer>
 
       {/* Change Organization Modal */}
       <ChangeOrgModal
